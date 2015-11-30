@@ -30,9 +30,19 @@ if filename.endswith(".gz"):
 else:
     seq_file = open(filename, 'r')
 
-seq_format = 'fasta'
-if filename.endswith(".fq") or filename.endswith(".fastq"):
+# Try to guess the format of the file from the contents of the first line
+
+seq_format = ''
+first_line = seq_file.readline()
+seq_file.seek(0)
+if first_line.startswith(">"):
+    seq_format = 'fasta'
+elif first_line.startswith("@"):
     seq_format = 'fastq'
+
+if seq_format == '':
+    print("Error: can't determine the format of the sequence file", file=sys.stderr)
+    exit(1)
 
 print("Reading sequences", end="\r", file=sys.stderr)
 all_lengths = []
@@ -40,7 +50,7 @@ all_gc = []
 for seq in SeqIO.parse(seq_file, seq_format):
     seq = SeqStats(seq)
     all_lengths.append(seq.length)
-    all_gc.append(seq.gc)
+    all_gc.append(seq.gc*100)
 seq_file.close()
 print("Plotting data    ", file=sys.stderr)
 
