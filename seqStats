@@ -1,0 +1,97 @@
+#!/usr/bin/env python
+
+from __future__ import print_function, division
+
+import matplotlib.pyplot as plt
+import gzip
+import sys
+from Bio import SeqIO
+
+class SeqStats:
+    def __init__(self,seq):
+        self.id = seq.id
+        self.seq = seq.seq
+        self.length = len(self.seq)
+        self.gc = self.calcGC()
+    
+    def calcGC(self):
+        seqString = self.seq.upper()
+        return (seqString.count("G") + seqString.count("C")) / self.length
+
+if len(sys.argv) != 2:
+    print( "Usage: %s <filename>" % sys.argv[0])
+    exit(1)
+
+# Try and work out the file format and whether it is compressed...
+filename = sys.argv[1]
+if filename.endswith(".gz"):
+    seq_file = gzip.open(filename, 'r')
+    filename = filename[:-3]
+else:
+    seq_file = open(filename, 'r')
+
+seq_format = 'fasta'
+if filename.endswith(".fq") or filename.endswith(".fastq"):
+    seq_format = 'fastq'
+
+print("Reading sequences", end="\r", file=sys.stderr)
+all_lengths = []
+all_gc = []
+for seq in SeqIO.parse(seq_file, seq_format):
+    seq = SeqStats(seq)
+    all_lengths.append(seq.length)
+    all_gc.append(seq.gc)
+seq_file.close()
+print("Plotting data    ", file=sys.stderr)
+
+length_figure = plt.figure(1)
+length_figure.set_facecolor('white')
+gc_figure = plt.figure(2)
+gc_figure.set_facecolor('white')
+
+# Draw the length distribution and cumulative length distribution for the seqeunces ordered by size
+
+length_axes = length_figure.add_subplot(121)
+cumm_axes = length_figure.add_subplot(122)
+
+max_seq_length = max(all_lengths)
+if max_seq_length < 1000:
+    scale_factor = 1
+    scale_label = ""
+elif max_seq_length < 1000000:
+    scale_factor = 1000
+    scale_label = " (kb)"
+else:
+    scale_factor = 1000000
+    scale_label = " (Mb)"
+
+num_seqs = len(all_lengths)
+marker_alpha = 1.0
+if num_seqs > 1000000:
+    marker_alpha = 0.3
+elif num_seqs > 1000:
+    marker_alpha = 0.5
+
+hist_lengths = [x / scale_factor for x in all_lengths]
+length_axes.hist(hist_lengths, bins=20)
+length_axes.set_xlabel('Sequence length' + scale_label)
+length_axes.set_ylabel('Frequency')
+
+cumm_lengths = []
+total_length = 0
+for length in sorted(all_lengths, reverse=True):
+    total_length += length / 1e6
+    cumm_lengths.append(total_length)
+
+cumm_axes.plot(cumm_lengths)
+cumm_axes.axhline(total_length / 2, color='red', linestyle='--')
+cumm_axes.set_ylabel('Cumulative length (Mb)')
+cumm_axes.set_xlabel('Sequence rank')
+
+gc_axes = gc_figure.add_subplot(111)
+gc_axes.scatter(hist_lengths, all_gc, alpha=marker_alpha, marker="+")
+gc_axes.set_ylabel("GC Content (%)")
+gc_axes.set_xlabel("Sequence length" + scale_label)
+gc_axes.set_xlim((0, gc_axes.get_xlim()[1]))
+
+plt.show()
