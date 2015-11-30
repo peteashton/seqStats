@@ -1,8 +1,8 @@
-[[seqStat]]
+## seqStat
 
 Create sequences statistics figures for DNA seqeunce files
 
-Usage: seqStat <filename>
+Usage: seqStat \<filename\>
 
 filename is a file of DNA sequences.  They can be in FASTA or FASTQ format and can optionally be compressed with gzip.
 
